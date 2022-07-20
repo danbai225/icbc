@@ -5,8 +5,6 @@ import (
 	"strconv"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -23,6 +21,7 @@ func init() {
 
 func newTestClient() (*Client, error) {
 	options := Options{
+		Host:             "https://apipcs3.dccnet.com.cn",
 		AppID:            os.Getenv("APP_ID"),
 		AppPrivateKey:    os.Getenv("APP_PRIVATE_KEY"),
 		GatewayPublicKey: os.Getenv("GATEWAY_PUBLIC_KEY"),
@@ -37,6 +36,8 @@ func TestClient_Execute(t *testing.T) {
 		OutTradeNo: os.Getenv("OUT_TRADE_NO"),
 	}
 	var respBiz QrcodeQueryResponseV2Biz
-	err := client.Execute(msgID, reqBiz, &respBiz)
-	assert.Nil(t, err)
+	err, _ := client.Execute(msgID, reqBiz, &respBiz)
+	if err != nil {
+		t.Fatal(err)
+	}
 }

@@ -90,3 +90,33 @@ type QrcodeGenerateRequestV2Biz struct {
 func (QrcodeGenerateRequestV2Biz) ServicePath() string {
 	return "/api/qrcode/V2/generate"
 }
+
+type H5Request struct {
+	AppId           string `json:"appId"`
+	OutOrderId      string `json:"outOrderId"`
+	OutVendorId     string `json:"outVendorId"`
+	OutUserId       string `json:"outUserId"`
+	PayAmount       string `json:"payAmount"`
+	PayType         string `json:"payType"`
+	NotifyUrl       string `json:"notifyUrl"`
+	JumpUrl         string `json:"jumpUrl"`
+	GoodsId         string `json:"goodsId"`
+	GoodsName       string `json:"goodsName"`
+	Mac             string `json:"mac"`
+	TrxIp           string `json:"trxIp"`
+	TrxIpCity       string `json:"trxIpCity"`
+	TrxChannel      string `json:"trxChannel"`
+	SubMerRateOwn   string `json:"subMerRateOwn"`
+	SubMerRateOther string `json:"subMerRateOther"`
+	SubMerRateWx    string `json:"subMerRateWx"`
+	SubMerRateZfb   string `json:"subMerRateZfb"`
+	TpAppId         string `json:"tpAppId"`
+	TpOpenId        string `json:"tpOpenId"`
+	UnionId         string `json:"unionId"`
+	OutBusinessCode string `json:"outBusinessCode"`
+	VarNote         string `json:"varNote"`
+}
+
+func (H5Request) ServicePath() string {
+	return "/ui/jft/ui/pay/h5/V3"
+}

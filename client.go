@@ -1,6 +1,7 @@
 package icbc
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
@@ -8,6 +9,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -36,6 +38,7 @@ type commonResponse struct {
 }
 
 type Client struct {
+	host             string
 	httpClient       *http.Client
 	appID            string
 	appPrivateKey    *rsa.PrivateKey
@@ -43,6 +46,7 @@ type Client struct {
 }
 
 type Options struct {
+	Host             string
 	Timeout          time.Duration
 	AppID            string
 	AppPrivateKey    string
@@ -64,6 +68,11 @@ func NewClient(options Options) (client *Client, err error) {
 		appPrivateKey:    appPrivateKey,
 		gatewayPublicKey: gatewayPublicKey,
 	}
+	if options.Host != "" {
+		client.host = options.Host
+	} else {
+		client.host = gatewayBaseURL
+	}
 	return
 }
 
@@ -78,7 +87,7 @@ func (c *Client) VerifyNotification(req *http.Request) (err error) {
 	return
 }
 
-func (c *Client) Execute(msgID string, reqBiz RequestBiz, respBiz interface{}) (err error) {
+func (c *Client) Execute(msgID string, reqBiz RequestBiz, respBiz interface{}) (err error, bytesData []byte) {
 	params := make(url.Values)
 
 	params.Set("app_id", c.appID)
@@ -111,19 +120,25 @@ func (c *Client) Execute(msgID string, reqBiz RequestBiz, respBiz interface{}) (
 	defer func() {
 		_ = resp.Body.Close()
 	}()
-
-	var commResp commonResponse
-	err = json.NewDecoder(resp.Body).Decode(&commResp)
-	if err != nil {
-		return
-	}
-	err = c.verify(string(commResp.ResponseBizContent), commResp.Sign)
+	bytesData, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return
 	}
 	if respBiz != nil {
+		var commResp commonResponse
+		err = json.NewDecoder(bytes.NewBuffer(bytesData)).Decode(&commResp)
+		if err != nil {
+			return
+		}
+		err = c.verify(string(commResp.ResponseBizContent), commResp.Sign)
+		if err != nil {
+			return
+		}
 		err = json.Unmarshal(commResp.ResponseBizContent, respBiz)
 		if err != nil {
+			return
+		}
+		if reflect.ValueOf(respBiz).Elem().Kind() == reflect.Map {
 			return
 		}
 		fld := reflect.ValueOf(respBiz).Elem().FieldByName("ReturnCode")
@@ -177,6 +192,6 @@ func (Client) buildStringToSign(path string, params url.Values) string {
 	return buf.String()
 }
 
-func (Client) buildURL(path string) string {
-	return gatewayBaseURL + path
+func (c Client) buildURL(path string) string {
+	return c.host + path
 }
