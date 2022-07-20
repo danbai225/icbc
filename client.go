@@ -1,7 +1,6 @@
 package icbc
 
 import (
-	"bytes"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
@@ -9,7 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
-	"io/ioutil"
+	"fmt"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -87,7 +86,7 @@ func (c *Client) VerifyNotification(req *http.Request) (err error) {
 	return
 }
 
-func (c *Client) Execute(msgID string, reqBiz RequestBiz, respBiz interface{}) (err error, bytesData []byte) {
+func (c *Client) Execute(msgID string, reqBiz RequestBiz, respBiz interface{}) (err error) {
 	params := make(url.Values)
 
 	params.Set("app_id", c.appID)
@@ -120,13 +119,9 @@ func (c *Client) Execute(msgID string, reqBiz RequestBiz, respBiz interface{}) (
 	defer func() {
 		_ = resp.Body.Close()
 	}()
-	bytesData, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return
-	}
 	if respBiz != nil {
 		var commResp commonResponse
-		err = json.NewDecoder(bytes.NewBuffer(bytesData)).Decode(&commResp)
+		err = json.NewDecoder(resp.Body).Decode(&commResp)
 		if err != nil {
 			return
 		}
@@ -148,7 +143,53 @@ func (c *Client) Execute(msgID string, reqBiz RequestBiz, respBiz interface{}) (
 	}
 	return
 }
+func (c *Client) BuildForm(msgID string, reqBiz RequestBiz) (err error, formStr string) {
+	params := make(url.Values)
 
+	params.Set("app_id", c.appID)
+	params.Set("msg_id", msgID)
+	params.Set("format", formatJSON)
+	params.Set("charset", charsetUTF8)
+	params.Set("sign_type", signTypeRSA2)
+	timestamp := time.Now().In(DefaultLocation).Format(timestampLayout)
+	params.Set("timestamp", timestamp)
+	reqBizStr, err := json.Marshal(reqBiz)
+	if err != nil {
+		return
+	}
+	params.Set("biz_content", string(reqBizStr))
+	stringToSign := c.buildStringToSign(reqBiz.ServicePath(), params)
+	sign, err := c.sign(stringToSign)
+	if err != nil {
+		return
+	}
+	params.Set("sign", sign)
+
+	serviceURL := c.buildURL(reqBiz.ServicePath())
+
+	urlStr := fmt.Sprintf("%s?%s", serviceURL, params.Encode())
+	formStr = fmt.Sprintf(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+<form name="auto_submit_form" method="post" action="%s">
+	<input type="hidden" name="biz_content" value="%s"> 
+	<input type="submit" value="立刻提交" style="display:none" > 
+</form>
+<script>document.forms[0].submit();</script>
+</body>
+
+</html>
+`, urlStr, strings.ReplaceAll(string(reqBizStr), "\"", "&quot;"))
+	return
+}
 func (c *Client) verify(data, sign string) (err error) {
 	sig, err := base64.StdEncoding.DecodeString(sign)
 	if err != nil {

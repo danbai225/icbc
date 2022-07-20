@@ -36,7 +36,7 @@ func TestClient_Execute(t *testing.T) {
 		OutTradeNo: os.Getenv("OUT_TRADE_NO"),
 	}
 	var respBiz QrcodeQueryResponseV2Biz
-	err, _ := client.Execute(msgID, reqBiz, &respBiz)
+	err := client.Execute(msgID, reqBiz, &respBiz)
 	if err != nil {
 		t.Fatal(err)
 	}
