@@ -85,7 +85,9 @@ func (c *Client) VerifyNotification(req *http.Request) (err error) {
 	err = c.verify(stringToSign, sign)
 	return
 }
-
+func (c *Client) Verify(data, sign string) error {
+	return c.verify(data, sign)
+}
 func (c *Client) Execute(msgID string, reqBiz RequestBiz, respBiz interface{}) (err error) {
 	params := make(url.Values)
 
@@ -210,7 +212,7 @@ func (c *Client) sign(data string) (sign string, err error) {
 	return
 }
 
-func (Client) buildStringToSign(path string, params url.Values) string {
+func (c *Client) buildStringToSign(path string, params url.Values) string {
 	keys := make(sort.StringSlice, 0, len(params))
 	for key := range params {
 		if key != "" && key != "sign" {
@@ -233,6 +235,6 @@ func (Client) buildStringToSign(path string, params url.Values) string {
 	return buf.String()
 }
 
-func (c Client) buildURL(path string) string {
+func (c *Client) buildURL(path string) string {
 	return c.host + path
 }
